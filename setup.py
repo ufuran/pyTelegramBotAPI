@@ -20,7 +20,8 @@ setup(name='pyTelegramBotAPI',
       install_requires=['requests', 'six'],
       extras_require={
           'json': 'ujson',
-          'redis': 'redis>=3.4.1'
+          'redis': 'redis>=3.4.1',
+          'pymongo': 'pymongo>=3.10.1'
       },
       classifiers=[
           'Development Status :: 5 - Production/Stable',
