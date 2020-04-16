@@ -143,3 +143,33 @@ class RedisHandlerBackend(HandlerBackend):
             self.clear_handlers(handler_group_id)
 
         return handlers
+
+
+class MongoHandlerBackend(HandlerBackend):
+    def __init__(self, host, port, username, password, auth_source, collection, handlers=None):
+        super().__init__(handlers)
+        from pymongo import MongoClient
+        self.client = MongoClient(host, port, username=username, password=password, authSource=auth_source)
+        self.db = self.client[auth_source]
+        self.collection = self.db[collection]
+
+    def register_handler(self, handler_group_id, handler):
+        from bson import Binary
+        handlers = []
+        value = self.collection.find_one({'user_id': handler_group_id})
+        if value:
+            handlers = pickle.loads(value)
+        handlers.append(handler)
+        self.collection.update_one({'user_id': handler_group_id}, {'$set': {'handlers': Binary(handlers)}}, upsert=True)
+
+    def clear_handlers(self, handler_group_id):
+        self.collection.delete_one({'user_id': handler_group_id})
+
+    def get_handlers(self, handler_group_id):
+        handlers = []
+        value = self.collection.find_one({'user_id': handler_group_id})
+        if value:
+            handlers = pickle.loads(value)
+            self.clear_handlers(handler_group_id)
+
+        return handlers

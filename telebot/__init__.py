@@ -367,6 +367,7 @@ class TeleBot:
         self._notify_command_handlers(self.chosen_inline_handlers, new_chosen_inline_querys)
 
     def process_new_callback_query(self, new_callback_querys):
+        self._notify_next_handlers(new_callback_querys)
         self._notify_command_handlers(self.callback_query_handlers, new_callback_querys)
 
     def process_new_shipping_query(self, new_shipping_querys):
