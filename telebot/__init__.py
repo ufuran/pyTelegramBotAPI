@@ -1482,7 +1482,10 @@ class TeleBot:
         """
         for i, message in enumerate(new_messages):
             need_pop = False
-            handlers = self.next_step_backend.get_handlers(message.chat.id)
+            if getattr(new_messages, 'message', None) is None:
+                handlers = self.next_step_backend.get_handlers(message.chat.id)
+            else:
+                handlers = self.next_step_backend.get_handlers(message.message.chat.id)
             for handler in handlers:
                 need_pop = True
                 self._exec_task(handler["callback"], message, *handler["args"], **handler["kwargs"])
