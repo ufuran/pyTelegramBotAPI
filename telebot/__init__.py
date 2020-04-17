@@ -1482,7 +1482,7 @@ class TeleBot:
         """
         for i, message in enumerate(new_messages):
             need_pop = False
-            if getattr(new_messages, 'message', None) is None:
+            if getattr(message, 'message', None) is None:
                 handlers = self.next_step_backend.get_handlers(message.chat.id)
             else:
                 handlers = self.next_step_backend.get_handlers(message.message.chat.id)
