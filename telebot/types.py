@@ -2264,3 +2264,7 @@ class Poll(JsonDeserializable):
             self.options.append(option)
         else:
             self.options.append(PollOption(option))
+
+
+class MiddlewareException(Exception):
+    pass

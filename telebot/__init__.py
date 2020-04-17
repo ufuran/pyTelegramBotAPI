@@ -9,6 +9,8 @@ import time
 
 import six
 
+from telebot.types import MiddlewareException
+
 logger = logging.getLogger('TeleBot')
 formatter = logging.Formatter(
     '%(asctime)s (%(filename)s:%(lineno)d %(threadName)s) %(levelname)s - %(name)s: "%(message)s"'
@@ -296,9 +298,11 @@ class TeleBot:
         new_polls = []
 
         for update in updates:
-
             if apihelper.ENABLE_MIDDLEWARE:
-                self.process_middlewares(update)
+                try:
+                    self.process_middlewares(update)
+                except MiddlewareException:
+                    continue
 
             if update.update_id > self.last_update_id:
                 self.last_update_id = update.update_id
