@@ -169,7 +169,10 @@ class MongoHandlerBackend(HandlerBackend):
         handlers = []
         value = self.collection.find_one({'user_id': handler_group_id})
         if value:
-            handlers = pickle.loads(value['handlers'])
+            try:
+                handlers = pickle.loads(value['handlers'])
+            except:
+                pass
             self.clear_handlers(handler_group_id)
 
         return handlers
