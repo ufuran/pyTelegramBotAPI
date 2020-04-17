@@ -158,9 +158,9 @@ class MongoHandlerBackend(HandlerBackend):
         handlers = []
         value = self.collection.find_one({'user_id': handler_group_id})
         if value:
-            handlers = pickle.loads(value)
+            handlers = pickle.loads(value['handlers'])
         handlers.append(handler)
-        self.collection.update_one({'user_id': handler_group_id}, {'$set': {'handlers': Binary(handlers)}}, upsert=True)
+        self.collection.update_one({'user_id': handler_group_id}, {'$set': {'handlers': Binary(pickle.dumps(handlers))}}, upsert=True)
 
     def clear_handlers(self, handler_group_id):
         self.collection.delete_one({'user_id': handler_group_id})
@@ -169,7 +169,7 @@ class MongoHandlerBackend(HandlerBackend):
         handlers = []
         value = self.collection.find_one({'user_id': handler_group_id})
         if value:
-            handlers = pickle.loads(value)
+            handlers = pickle.loads(value['handlers'])
             self.clear_handlers(handler_group_id)
 
         return handlers
