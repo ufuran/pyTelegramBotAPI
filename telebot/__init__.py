@@ -82,6 +82,7 @@ class TeleBot:
         getChatMembersCount
         getChatMember
         answerCallbackQuery
+        setMyCommands
         answerInlineQuery
         """
 
@@ -120,6 +121,7 @@ class TeleBot:
         self.shipping_query_handlers = []
         self.pre_checkout_query_handlers = []
         self.poll_handlers = []
+        self.poll_answer_handlers = []
 
         self.typed_middleware_handlers = {
             'message': [],
@@ -207,7 +209,6 @@ class TeleBot:
         :param filename: Filename of the file where handlers was saved
         :param del_file_after_loading: Is passed True, after loading save file will be deleted
         """
-        self.next_step_backend: FileHandlerBackend
         self.next_step_backend.load_handlers(filename, del_file_after_loading)
 
     def load_reply_handlers(self, filename="./.handler-saves/reply.save", del_file_after_loading=True):
@@ -223,7 +224,6 @@ class TeleBot:
         :param filename: Filename of the file where handlers was saved
         :param del_file_after_loading: Is passed True, after loading save file will be deleted
         """
-        self.reply_backend: FileHandlerBackend
         self.reply_backend.load_handlers(filename, del_file_after_loading)
 
     def set_webhook(self, url=None, certificate=None, max_connections=None, allowed_updates=None):
@@ -287,7 +287,7 @@ class TeleBot:
 
     def process_new_updates(self, updates):
         new_messages = []
-        edited_new_messages = []
+        new_edited_messages = []
         new_channel_posts = []
         new_edited_channel_posts = []
         new_inline_querys = []
@@ -296,6 +296,7 @@ class TeleBot:
         new_shipping_querys = []
         new_pre_checkout_querys = []
         new_polls = []
+        new_poll_answers = []
 
         for update in updates:
             if apihelper.ENABLE_MIDDLEWARE:
@@ -309,7 +310,7 @@ class TeleBot:
             if update.message:
                 new_messages.append(update.message)
             if update.edited_message:
-                edited_new_messages.append(update.edited_message)
+                new_edited_messages.append(update.edited_message)
             if update.channel_post:
                 new_channel_posts.append(update.channel_post)
             if update.edited_channel_post:
@@ -326,12 +327,14 @@ class TeleBot:
                 new_pre_checkout_querys.append(update.pre_checkout_query)
             if update.poll:
                 new_polls.append(update.poll)
+            if update.poll_answer:
+                new_poll_answers.append(update.poll_answer)
 
         logger.debug('Received {0} new updates'.format(len(updates)))
         if len(new_messages) > 0:
             self.process_new_messages(new_messages)
-        if len(edited_new_messages) > 0:
-            self.process_new_edited_messages(edited_new_messages)
+        if len(new_edited_messages) > 0:
+            self.process_new_edited_messages(new_edited_messages)
         if len(new_channel_posts) > 0:
             self.process_new_channel_posts(new_channel_posts)
         if len(new_edited_channel_posts) > 0:
@@ -348,6 +351,8 @@ class TeleBot:
             self.process_new_pre_checkout_query(new_pre_checkout_querys)
         if len(new_polls) > 0:
             self.process_new_poll(new_polls)
+        if len(new_poll_answers) > 0:
+            self.process_new_poll_answer(new_poll_answers)
 
     def process_new_messages(self, new_messages):
         self._notify_next_handlers(new_messages)
@@ -383,6 +388,9 @@ class TeleBot:
     def process_new_poll(self, polls):
         self._notify_command_handlers(self.poll_handlers, polls)
 
+    def process_new_poll_answer(self, poll_answers):
+        self._notify_command_handlers(self.poll_answer_handlers, poll_answers)
+
     def process_middlewares(self, update):
         for update_type, middlewares in self.typed_middleware_handlers.items():
             if hasattr(update, update_type) and getattr(update, update_type) is not None:
@@ -401,7 +409,7 @@ class TeleBot:
         while not self.__stop_polling.is_set():
             try:
                 self.polling(timeout=timeout, *args, **kwargs)
-            except Exception as e:
+            except Exception:
                 time.sleep(timeout)
                 pass
         logger.info("Break infinity polling")
@@ -554,9 +562,11 @@ class TeleBot:
 
     def get_chat_administrators(self, chat_id):
         """
-        Use this method to get a list of administrators in a chat. On success, returns an Array of ChatMember objects
-        that contains information about all chat administrators except other bots.
-        :param chat_id:
+        Use this method to get a list of administrators in a chat.
+        On success, returns an Array of ChatMember objects that contains
+            information about all chat administrators except other bots.
+        :param chat_id: Unique identifier for the target chat or username
+            of the target supergroup or channel (in the format @channelusername)
         :return:
         """
         result = apihelper.get_chat_administrators(self.token, chat_id)
@@ -625,6 +635,7 @@ class TeleBot:
         :param reply_markup:
         :param parse_mode:
         :param disable_notification: Boolean, Optional. Sends the message silently.
+        :param timeout:
         :return: API reply.
         """
         return types.Message.de_json(
@@ -652,17 +663,18 @@ class TeleBot:
         """
         return apihelper.delete_message(self.token, chat_id, message_id)
 
-    def send_dice(self, chat_id, disable_notification=None, reply_to_message_id=None, reply_markup=None):
+    def send_dice(self, chat_id, emoji=None, disable_notification=None, reply_to_message_id=None, reply_markup=None):
         """
         Use this method to send dices.
         :param chat_id:
+        :param emoji:
         :param disable_notification:
         :param reply_to_message_id:
         :param reply_markup:
         :return: Message
         """
         return types.Message.de_json(
-            apihelper.send_dice(self.token, chat_id, disable_notification, reply_to_message_id, reply_markup)
+            apihelper.send_dice(self.token, chat_id, emoji, disable_notification, reply_to_message_id, reply_markup)
         )
 
     def send_photo(self, chat_id, photo, caption=None, reply_to_message_id=None, reply_markup=None,
@@ -782,12 +794,14 @@ class TeleBot:
         """
         Use this method to send animation files (GIF or H.264/MPEG-4 AVC video without sound).
         :param chat_id: Integer : Unique identifier for the message recipient — User or GroupChat id
-        :param data: InputFile or String : Animation to send. You can either pass a file_id as String to resend an animation that is already on the Telegram server
+        :param animation: InputFile or String : Animation to send. You can either pass a file_id as String to resend an animation that is already on the Telegram server
         :param duration: Integer : Duration of sent video in seconds
         :param caption: String : Animation caption (may also be used when resending animation by file_id).
         :param parse_mode:
         :param reply_to_message_id:
         :param reply_markup:
+        :param disable_notification:
+        :param timeout:
         :return:
         """
         return types.Message.de_json(
@@ -935,7 +949,7 @@ class TeleBot:
 
     def restrict_chat_member(self, chat_id, user_id, until_date=None, can_send_messages=None,
                              can_send_media_messages=None, can_send_other_messages=None,
-                             can_add_web_page_previews=None):
+                             can_add_web_page_previews=None, can_invite_users=None):
         """
         Use this method to restrict a user in a supergroup.
         The bot must be an administrator in the supergroup for this to work and must have
@@ -954,11 +968,13 @@ class TeleBot:
             use inline bots, implies can_send_media_messages
         :param can_add_web_page_previews: Pass True, if the user may add web page previews to their messages,
             implies can_send_media_messages
+	:param can_invite_users: Pass True, if the user is allowed to invite new users to the chat,
+	    implies can_invite_users
         :return: types.Message
         """
         return apihelper.restrict_chat_member(self.token, chat_id, user_id, until_date, can_send_messages,
                                               can_send_media_messages, can_send_other_messages,
-                                              can_add_web_page_previews)
+                                              can_add_web_page_previews, can_invite_users)
 
     def promote_chat_member(self, chat_id, user_id, can_change_info=None, can_post_messages=None,
                             can_edit_messages=None, can_delete_messages=None, can_invite_users=None,
@@ -985,6 +1001,33 @@ class TeleBot:
         return apihelper.promote_chat_member(self.token, chat_id, user_id, can_change_info, can_post_messages,
                                              can_edit_messages, can_delete_messages, can_invite_users,
                                              can_restrict_members, can_pin_messages, can_promote_members)
+
+    def set_chat_administrator_custom_title(self, chat_id, user_id, custom_title):
+        """
+        Use this method to set a custom title for an administrator
+            in a supergroup promoted by the bot.
+        Returns True on success.
+        :param chat_id: Unique identifier for the target chat or username of the target supergroup
+            (in the format @supergroupusername)
+        :param user_id: Unique identifier of the target user
+        :param custom_title: New custom title for the administrator;
+            0-16 characters, emoji are not allowed
+        :return:
+        """
+        return apihelper.set_chat_administrator_custom_title(self.token, chat_id, user_id, custom_title)
+
+
+    def set_chat_permissions(self, chat_id, permissions):
+        """
+        Use this method to set default chat permissions for all members.
+            The bot must be an administrator in the group or a supergroup for this to work
+            and must have the can_restrict_members admin rights.
+        :param chat_id: Unique identifier for the target chat or username of the target supergroup
+            (in the format @supergroupusername)
+        :param permissions: New default chat permissions
+        :return:
+        """
+        return apihelper.set_chat_permissions(self.token, chat_id, permissions)
 
     def export_chat_invite_link(self, chat_id):
         """
@@ -1023,6 +1066,15 @@ class TeleBot:
         :return:
         """
         return apihelper.delete_chat_photo(self.token, chat_id)
+
+    def set_my_commands(self, commands):
+        """
+        Use this method to change the list of the bot's commands.
+        :param commands: Array of BotCommand. A JSON-serialized list of bot commands
+            to be set as the list of the bot's commands. At most 100 commands can be specified.
+        :return:
+        """
+        return apihelper.set_my_commands(self.token, commands)
 
     def set_chat_title(self, chat_id, title):
         """
@@ -1209,17 +1261,42 @@ class TeleBot:
                                         disable_notification, reply_to_message_id, reply_markup, provider_data)
         return types.Message.de_json(result)
 
-    def send_poll(self, chat_id, poll, disable_notifications=False, reply_to_message=None, reply_markup=None):
+    def send_poll(
+            self, chat_id,
+            question, options,
+            is_anonymous=None, type=None, allows_multiple_answers=None, correct_option_id=None,
+            explanation=None, explanation_parse_mode=None, open_period=None, close_date=None, is_closed=None,
+            disable_notifications=False, reply_to_message_id=None, reply_markup=None):
         """
-        Sends poll
+        Send polls
         :param chat_id:
-        :param poll:
+        :param question:
+        :param options: array of str with answers
+        :param is_anonymous:
+        :param type:
+        :param allows_multiple_answers:
+        :param correct_option_id:
+        :param explanation:
+        :param explanation_parse_mode:
+        :param open_period:
+        :param close_date:
+        :param is_closed:
         :param disable_notifications:
-        :param reply_to_message:
+        :param reply_to_message_id:
         :param reply_markup:
         :return:
         """
-        return types.Message.de_json(apihelper.send_poll(self.token, chat_id, poll.question, poll.options, disable_notifications, reply_to_message, reply_markup))
+
+        if isinstance(question, types.Poll):
+            raise Exception("The send_poll signature was changed, please see send_poll function details.")
+
+        return types.Message.de_json(
+            apihelper.send_poll(
+                self.token, chat_id,
+                question, options,
+                is_anonymous, type, allows_multiple_answers, correct_option_id,
+                explanation, explanation_parse_mode, open_period, close_date, is_closed,
+                disable_notifications, reply_to_message_id, reply_markup))
 
     def stop_poll(self, chat_id, message_id):
         """
@@ -1502,7 +1579,7 @@ class TeleBot:
         """
         return {
             'function': handler,
-            'filters' : filters
+            'filters': filters
         }
 
     def middleware_handler(self, update_types=None):
@@ -1571,11 +1648,12 @@ class TeleBot:
         def command_handle_document(message):
             bot.send_message(message.chat.id, 'Document received, sir!')
 
-        # Handle all other commands.
+        # Handle all other messages.
         @bot.message_handler(func=lambda message: True, content_types=['audio', 'photo', 'voice', 'video', 'document', 'text', 'location', 'contact', 'sticker'])
         def default_command(message):
             bot.send_message(message.chat.id, "This is the default command handler.")
 
+        :param commands: Optional list of strings (commands to handle).
         :param regexp: Optional regular expression.
         :param func: Optional lambda function. The lambda receives the message to test as the first parameter. It must return True if the command should handle the message.
         :param content_types: This commands' supported content types. Must be a list. Defaults to ['text'].
@@ -1840,6 +1918,28 @@ class TeleBot:
         """
         self.poll_handlers.append(handler_dict)
 
+    def poll_answer_handler(self, func=None, **kwargs):
+        """
+        Poll_answer request handler
+        :param func:
+        :param kwargs:
+        :return:
+        """
+        def decorator(handler):
+            handler_dict = self._build_handler_dict(handler, func=func, **kwargs)
+            self.add_poll_answer_handler(handler_dict)
+            return handler
+
+        return decorator
+
+    def add_poll_answer_handler(self, handler_dict):
+        """
+        Adds a poll_answer request handler
+        :param handler_dict:
+        :return:
+        """
+        self.poll_answer_handlers.append(handler_dict)
+
     def _test_message_handler(self, message_handler, message):
         """
         Test message handler
@@ -1847,20 +1947,20 @@ class TeleBot:
         :param message:
         :return:
         """
-        for filter, filter_value in six.iteritems(message_handler['filters']):
+        for message_filter, filter_value in six.iteritems(message_handler['filters']):
             if filter_value is None:
                 continue
 
-            if not self._test_filter(filter, filter_value, message):
+            if not self._test_filter(message_filter, filter_value, message):
                 return False
 
         return True
 
     @staticmethod
-    def _test_filter(filter, filter_value, message):
+    def _test_filter(message_filter, filter_value, message):
         """
         Test filters
-        :param filter:
+        :param message_filter:
         :param filter_value:
         :param message:
         :return:
@@ -1872,7 +1972,7 @@ class TeleBot:
             'func': lambda msg: filter_value(msg)
         }
 
-        return test_cases.get(filter, lambda msg: False)(message)
+        return test_cases.get(message_filter, lambda msg: False)(message)
 
     def _notify_command_handlers(self, handlers, new_messages):
         """

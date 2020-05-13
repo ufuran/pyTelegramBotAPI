@@ -48,7 +48,7 @@ class TestTeleBot:
         bot = telebot.TeleBot('')
         msg = self.create_text_message(r'https://web.telegram.org/')
 
-        @bot.message_handler(regexp='((https?):((//)|(\\\\))+([\w\d:#@%/;$()~_?\+-=\\\.&](#!)?)*)')
+        @bot.message_handler(regexp=r'((https?):((//)|(\\\\))+([\w\d:#@%/;$()~_?\+-=\\\.&](#!)?)*)')
         def command_url(message):
             msg.text = 'got'
 
@@ -84,7 +84,7 @@ class TestTeleBot:
         bot = telebot.TeleBot('')
         msg = self.create_text_message(r'web.telegram.org/')
 
-        @bot.message_handler(regexp='((https?):((//)|(\\\\))+([\w\d:#@%/;$()~_?\+-=\\\.&](#!)?)*)')
+        @bot.message_handler(regexp=r'((https?):((//)|(\\\\))+([\w\d:#@%/;$()~_?\+-=\\\.&](#!)?)*)')
         def command_url(message):
             msg.text = 'got'
 
@@ -243,7 +243,7 @@ class TestTeleBot:
 
     def test_send_dice(self):
         tb = telebot.TeleBot(TOKEN)
-        ret_msg = tb.send_dice(CHAT_ID)
+        ret_msg = tb.send_dice(CHAT_ID, emoji='🎯')
         assert ret_msg.message_id
         assert ret_msg.content_type == 'dice'
 
@@ -428,8 +428,9 @@ class TestTeleBot:
         shipping_query = None
         pre_checkout_query = None
         poll = None
+        poll_answer = None
         return types.Update(-1001234038283, message, edited_message, channel_post, edited_channel_post, inline_query,
-                   chosen_inline_result, callback_query, shipping_query, pre_checkout_query, poll)
+                            chosen_inline_result, callback_query, shipping_query, pre_checkout_query, poll, poll_answer)
 
     def test_is_string_unicode(self):
         s1 = u'string'

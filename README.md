@@ -2,7 +2,8 @@
 
 <p align="center">A simple, but extensible Python implementation for the <a href="https://core.telegram.org/bots/api">Telegram Bot API</a>.
 
-[![Download Month](https://img.shields.io/pypi/v/pyTelegramBotAPI.svg)](https://pypi.python.org/pypi/pyTelegramBotAPI)
+[![PyPi Package Version](https://img.shields.io/pypi/v/pyTelegramBotAPI.svg)](https://pypi.python.org/pypi/pyTelegramBotAPI)
+[![Supported Python versions](https://img.shields.io/pypi/pyversions/pyTelegramBotAPI.svg)](https://pypi.python.org/pypi/pyTelegramBotAPI)
 [![Build Status](https://travis-ci.org/eternnoir/pyTelegramBotAPI.svg?branch=master)](https://travis-ci.org/eternnoir/pyTelegramBotAPI)
 
   * [Getting started.](#getting-started)
@@ -27,7 +28,8 @@
     * [Using web hooks](#using-web-hooks)
     * [Logging](#logging)
     * [Proxy](#proxy)
-  * [New in library](#new-in-library)
+  * [API conformance](#api-conformance)
+  * [Change log](#change-log)
   * [F.A.Q.](#faq)
     * [Bot 2.0](#bot-20)
     * [How can I distinguish a User and a GroupChat in message.chat?](#how-can-i-distinguish-a-user-and-a-groupchat-in-messagechat)
@@ -205,15 +207,15 @@ def send_something(message):
 
 #### Edited Message handlers
 
-Same as Message handlers
+@bot.edited_message_handler(filters)
 
 #### channel_post_handler
 
-Same as Message handlers
+@bot.channel_post_handler(filters)
 
 #### edited_channel_post_handler
 
-Same as Message handlers
+@bot.edited_channel_post_handler(filters)
 
 #### Callback Query Handler
 
@@ -553,7 +555,10 @@ _Checking is in progress..._
 
 ## Change log
 
-11.09.2020 - Refactoring. new_chat_member is out of support. Bugfix in html_text. Started Bot API conformance checking.
+27.04.2020 - Poll and Dice are up to date.
+Python2 conformance is not checked any more due to EOL. 
+
+11.04.2020 - Refactoring. new_chat_member is out of support. Bugfix in html_text. Started Bot API conformance checking.
 
 06.06.2019 - Added polls support (Poll). Added functions send_poll, stop_poll
 

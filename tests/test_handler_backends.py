@@ -2,14 +2,19 @@ import sys
 
 sys.path.append('../')
 
+REDIS_TESTS = False
+
 import os
 import time
 
 import pytest
 
 import telebot
-from telebot import types, MemoryHandlerBackend, FileHandlerBackend
-from telebot.handler_backends import RedisHandlerBackend
+from telebot import types
+from telebot.handler_backends import MemoryHandlerBackend, FileHandlerBackend
+
+if REDIS_TESTS:
+    from telebot.handler_backends import RedisHandlerBackend
 
 
 @pytest.fixture()
@@ -56,8 +61,9 @@ def update_type(message):
     shipping_query = None
     pre_checkout_query = None
     poll = None
+    poll_answer = None
     return types.Update(1001234038283, message, edited_message, channel_post, edited_channel_post, inline_query,
-                        chosen_inline_result, callback_query, shipping_query, pre_checkout_query, poll)
+                        chosen_inline_result, callback_query, shipping_query, pre_checkout_query, poll, poll_answer)
 
 
 @pytest.fixture()
@@ -71,9 +77,10 @@ def reply_to_message_update_type(reply_to_message):
     shipping_query = None
     pre_checkout_query = None
     poll = None
+    poll_answer = None
     return types.Update(1001234038284, reply_to_message, edited_message, channel_post, edited_channel_post,
                         inline_query,
-                        chosen_inline_result, callback_query, shipping_query, pre_checkout_query, poll)
+                        chosen_inline_result, callback_query, shipping_query, pre_checkout_query, poll, poll_answer)
 
 
 def next_handler(message):
@@ -226,6 +233,9 @@ def test_file_handler_backend_clear_next_step_handler(telegram_bot, private_chat
 
 
 def test_redis_handler_backend_register_next_step_handler(telegram_bot, private_chat, update_type):
+    if not REDIS_TESTS:
+        pytest.skip('please install redis and configure redis server, then enable REDIS_TESTS')
+
     telegram_bot.next_step_backend = RedisHandlerBackend(prefix='pyTelegramBotApi:step_backend1')
 
     @telegram_bot.message_handler(commands=['start'])
@@ -241,6 +251,9 @@ def test_redis_handler_backend_register_next_step_handler(telegram_bot, private_
 
 
 def test_redis_handler_backend_clear_next_step_handler(telegram_bot, private_chat, update_type):
+    if not REDIS_TESTS:
+        pytest.skip('please install redis and configure redis server, then enable REDIS_TESTS')
+
     telegram_bot.next_step_backend = RedisHandlerBackend(prefix='pyTelegramBotApi:step_backend2')
 
     @telegram_bot.message_handler(commands=['start'])
