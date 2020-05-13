@@ -259,9 +259,11 @@ def forward_message(token, chat_id, from_chat_id, message_id, disable_notificati
     return _make_request(token, method_url, params=payload)
 
 
-def send_dice(token, chat_id, disable_notification=None, reply_to_message_id=None, reply_markup=None):
+def send_dice(token, chat_id, emoji=None, disable_notification=None, reply_to_message_id=None, reply_markup=None):
     method_url = r'sendDice'
     payload = {'chat_id': chat_id}
+    if emoji:
+        payload['emoji'] = emoji
     if disable_notification:
         payload['disable_notification'] = disable_notification
     if reply_to_message_id:
@@ -569,7 +571,7 @@ def unban_chat_member(token, chat_id, user_id):
 
 def restrict_chat_member(token, chat_id, user_id, until_date=None, can_send_messages=None,
                          can_send_media_messages=None, can_send_other_messages=None,
-                         can_add_web_page_previews=None):
+                         can_add_web_page_previews=None, can_invite_users=None):
     method_url = 'restrictChatMember'
     payload = {'chat_id': chat_id, 'user_id': user_id}
     if until_date:
@@ -582,7 +584,8 @@ def restrict_chat_member(token, chat_id, user_id, until_date=None, can_send_mess
         payload['can_send_other_messages'] = can_send_other_messages
     if can_add_web_page_previews:
         payload['can_add_web_page_previews'] = can_add_web_page_previews
-
+    if can_invite_users:
+        payload['can_invite_users'] = can_invite_users
     return _make_request(token, method_url, params=payload, method='post')
 
 
@@ -607,6 +610,21 @@ def promote_chat_member(token, chat_id, user_id, can_change_info=None, can_post_
         payload['can_pin_messages'] = can_pin_messages
     if can_promote_members:
         payload['can_promote_members'] = can_promote_members
+    return _make_request(token, method_url, params=payload, method='post')
+
+
+def set_chat_administrator_custom_title(token, chat_id, user_id, custom_title):
+    method_url = 'setChatAdministratorCustomTitle'
+    payload = {
+        'chat_id': chat_id, 'user_id': user_id, 'custom_title': custom_title}
+    return _make_request(token, method_url, params=payload, method='post')
+
+
+def set_chat_permissions(token, chat_id, permissions):
+    method_url = 'setChatPermissions'
+    payload = {
+        'chat_id': chat_id,
+        'permissions': _convert_list_json_serializable(permissions)}
     return _make_request(token, method_url, params=payload, method='post')
 
 
@@ -636,6 +654,12 @@ def delete_chat_photo(token, chat_id):
 def set_chat_title(token, chat_id, title):
     method_url = 'setChatTitle'
     payload = {'chat_id': chat_id, 'title': title}
+    return _make_request(token, method_url, params=payload, method='post')
+
+
+def set_my_commands(token, commands):
+    method_url = r'setMyCommands'
+    payload = {'commands': _convert_list_json_serializable(commands)}
     return _make_request(token, method_url, params=payload, method='post')
 
 
@@ -994,14 +1018,42 @@ def delete_sticker_from_set(token, sticker):
     return _make_request(token, method_url, params=payload, method='post')
 
 
-def send_poll(token, chat_id, question, options, disable_notifications=False, reply_to_message_id=None, reply_markup=None):
+def send_poll(
+        token, chat_id,
+        question, options,
+        is_anonymous = None, type = None, allows_multiple_answers = None, correct_option_id = None,
+        explanation = None, explanation_parse_mode=None, open_period = None, close_date = None, is_closed = None,
+        disable_notifications=False, reply_to_message_id=None, reply_markup=None):
     method_url = r'sendPoll'
-    payload = {'chat_id': str(chat_id), 'question': question, 'options': _convert_list_json_serializable(options)}
+    payload = {
+        'chat_id': str(chat_id),
+        'question': question,
+        'options': json.dumps(options)}
+
+    if is_anonymous is not None:
+        payload['is_anonymous'] = is_anonymous
+    if type is not None:
+        payload['type'] = type
+    if allows_multiple_answers is not None:
+        payload['allows_multiple_answers'] = allows_multiple_answers
+    if correct_option_id is not None:
+        payload['correct_option_id'] = correct_option_id
+    if explanation is not None:
+        payload['explanation'] = explanation
+    if explanation_parse_mode is not None:
+        payload['explanation_parse_mode'] = explanation_parse_mode
+    if open_period is not None:
+        payload['open_period'] = open_period
+    if close_date is not None:
+        payload['close_date'] = close_date
+    if is_closed is not None:
+        payload['is_closed'] = is_closed
+
     if disable_notifications:
         payload['disable_notification'] = disable_notifications
-    if reply_to_message_id:
+    if reply_to_message_id is not None:
         payload['reply_to_message_id'] = reply_to_message_id
-    if reply_markup:
+    if reply_markup is not None:
         payload['reply_markup'] = _convert_markup(reply_markup)
     return _make_request(token, method_url, params=payload)
 
@@ -1041,7 +1093,7 @@ def _convert_input_media_array(array):
     files = {}
     for input_media in array:
         if isinstance(input_media, types.InputMedia):
-            media_dict = input_media.to_dic()
+            media_dict = input_media.to_dict()
             if media_dict['media'].startswith('attach://'):
                 key = media_dict['media'].replace('attach://', '')
                 files[key] = input_media.media

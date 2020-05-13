@@ -18,11 +18,12 @@ def test_json_message():
 
 
 def test_json_message_with_dice():
-    jsonstring = r'{"message_id":5560,"from":{"id":879343317,"is_bot":false,"first_name":"George","last_name":"Forse","username":"dr_fxrse","language_code":"ru"},"chat":{"id":879343317,"first_name":"George","last_name":"Forse","username":"dr_fxrse","type":"private"},"date":1586926330,"dice":{"value":4}}'
+    jsonstring = r'{"message_id":5560,"from":{"id":879343317,"is_bot":false,"first_name":"George","last_name":"Forse","username":"dr_fxrse","language_code":"ru"},"chat":{"id":879343317,"first_name":"George","last_name":"Forse","username":"dr_fxrse","type":"private"},"date":1586926330,"dice":{"value": 4, "emoji": "\ud83c\udfaf"}}'
     msg = types.Message.de_json(jsonstring)
     assert msg.content_type == 'dice'
     assert isinstance(msg.dice, types.Dice)
     assert msg.dice.value == 4
+    assert msg.dice.emoji == '🎯'
 
 
 def test_json_message_group():
@@ -166,3 +167,24 @@ def test_InlineQueryResultCachedPhoto_with_markup():
     assert 'Title' in json_str
     assert 'caption' not in json_str
     assert 'reply_markup' in json_str
+
+
+def test_json_poll_1():
+    jsonstring = r'{"message_id": 395020,"from": {"id": 111,"is_bot": false,"first_name": "FN","last_name": "LN","username": "Badiboy","language_code": "ru"},"chat": {"id": 111,"first_name": "FN","last_name": "LN","username": "Badiboy","type": "private"},"date": 1587841239,"poll": {"id": "5272018969396510722","question": "Test poll 1","options": [{"text": "Answer 1","voter_count": 0},{"text": "Answer 2","voter_count": 0}],"total_voter_count": 0,"is_closed": false,"is_anonymous": true,"type": "regular","allows_multiple_answers": true}}'
+    msg = types.Message.de_json(jsonstring)
+    assert msg.poll is not None
+    assert isinstance(msg.poll, types.Poll)
+    assert msg.poll.id == '5272018969396510722'
+    assert msg.poll.question is not None
+    assert msg.poll.options is not None
+    assert len(msg.poll.options) == 2
+    assert msg.poll.allows_multiple_answers is True
+
+
+def test_json_poll_answer():
+    jsonstring = r'{"poll_id": "5895675970559410186", "user": {"id": 329343347, "is_bot": false, "first_name": "Test", "username": "test_user", "last_name": "User", "language_code": "en"}, "option_ids": [1]}'
+    __import__('pprint').pprint(__import__('json').loads(jsonstring))
+    poll_answer = types.PollAnswer.de_json(jsonstring)
+    assert poll_answer.poll_id == '5895675970559410186'
+    assert isinstance(poll_answer.user, types.User)
+    assert poll_answer.options_ids == [1]
